@@ -1,0 +1,18 @@
+[
+  {
+    "concept": "Wikipedia",
+    "relevance_score": 0.20320508075688776,
+    "frequency": 1,
+    "tfidf_score": 0.5773502691896258,
+    "domain_score": 0.0,
+    "cooccurrence_score": 0.0
+  },
+  {
+    "concept": "Placeholder content",
+    "relevance_score": 0.20320508075688776,
+    "frequency": 1,
+    "tfidf_score": 0.5773502691896258,
+    "domain_score": 0.0,
+    "cooccurrence_score": 0.0
+  }
+]

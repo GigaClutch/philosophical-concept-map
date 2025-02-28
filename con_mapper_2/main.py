@@ -1,62 +1,89 @@
-"""
-Main entry point for the Philosophical Concept Map Generator.
-"""
-import os
 import sys
-import importlib
-
-def setup_environment():
-    """Set up the environment for the application."""
-    # Ensure required directories exist
-    directories = ["logs", "output", "wiki_cache", "data"]
-    for directory in directories:
-        os.makedirs(directory, exist_ok=True)
-    
-    # Add the current directory to the path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    if current_dir not in sys.path:
-        sys.path.insert(0, current_dir)
-    
-    # Check if __init__.py exists
-    init_file = os.path.join(current_dir, "__init__.py")
-    if not os.path.exists(init_file):
-        with open(init_file, 'w') as f:
-            f.write('"""Philosophical Concept Map Generator package."""\n')
+import os
+import importlib.util
+import subprocess
 
 def module_exists(module_name):
-    """Check if a module exists without importing it."""
-    return importlib.util.find_spec(module_name) is not None
+    """
+    Check if a module exists by attempting to import it.
+    
+    Args:
+        module_name (str): Name of the module to check.
+    
+    Returns:
+        bool: True if module exists, False otherwise.
+    """
+    try:
+        importlib.import_module(module_name)
+        return True
+    except ImportError:
+        return False
+
+def install_dependencies():
+    """
+    Install required dependencies using pip.
+    """
+    dependencies = [
+        'numpy', 
+        'matplotlib', 
+        'networkx', 
+        'spacy', 
+        'wikipedia', 
+        'scikit-learn', 
+        'pillow',
+        'nltk',
+        'pyvis',
+        'seaborn'
+    ]
+    
+    for dep in dependencies:
+        try:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', dep])
+            print(f"Successfully installed {dep}")
+        except subprocess.CalledProcessError:
+            print(f"Failed to install {dep}")
 
 def main():
-    """Main entry point."""
-    # Set up the environment
-    setup_environment()
+    """
+    Main entry point for the Philosophical Concept Mapper.
+    """
+    # Add the current directory to Python path
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
     
-    # Check if enhanced modules are available
-    if module_exists("main_enhanced_fixed"):
-        # Use the enhanced main script
-        print("Using enhanced features...")
-        from main_enhanced_fixed import main as enhanced_main
-        return enhanced_main()
-    elif module_exists("concept_map_refactored"):
-        # Use the refactored concept map
-        print("Using refactored features...")
-        from concept_map_refactored import main as refactored_main
-        return refactored_main()
-    elif module_exists("concept_map"):
-        # Use the original concept map
-        print("Using basic features...")
-        from concept_map import main as original_main
-        return original_main()
-    else:
-        # No modules available, use run_app as fallback
-        if module_exists("run_app"):
-            print("Using fallback app...")
-            from run_app import main as run_app_main
-            return run_app_main()
-        else:
-            print("Error: No valid modules found. Please run install.py first.")
-            return 1
+    # First, check and install dependencies
+    install_dependencies()
+    
+    # Try to download spaCy language model
+    try:
+        import spacy
+        spacy.cli.download("en_core_web_sm")
+    except Exception as e:
+        print(f"Error downloading spaCy model: {e}")
+    
+    # Import and run the primary application
+    try:
+        from concept_map import main as concept_map_main
+        return concept_map_main()
+    except ImportError:
+        print("Could not import concept_map module. Checking alternatives...")
+        
+        # List alternative modules to try
+        alternative_modules = [
+            'simple_gui',
+            'gui',
+            'concept_map'
+        ]
+        
+        for module_name in alternative_modules:
+            try:
+                module = importlib.import_module(module_name)
+                if hasattr(module, 'main'):
+                    return module.main()
+            except ImportError:
+                print(f"Could not import {module_name}")
+        
+        print("No suitable main module found. Please check your project setup.")
+        return 1
 
 if __name__ == "__main__":
     sys.exit(main())
