@@ -96,8 +96,12 @@ def create_interactive_visualization(input_concept, relationship_data, extracted
     # Add a slider for adjusting the threshold
     slider_ax = plt.axes([0.25, 0.05, 0.65, 0.03])
     threshold_slider = Slider(
-        slider_ax, 'Relevance Threshold', min_threshold, max_threshold, 
-        valinit=min_threshold, valstep=0.1
+        ax=slider_ax, 
+        label='Relevance Threshold', 
+        valmin=min_threshold, 
+        valmax=max_threshold, 
+        valinit=min_threshold, 
+        valstep=0.1
     )
     
     # Update function for the slider
