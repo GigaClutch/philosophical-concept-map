@@ -1,44 +1,78 @@
+"""
+GUI module for the Philosophical Concept Map Generator.
+
+This module provides a simple GUI for the application.
+"""
 import tkinter as tk
 from tkinter import ttk, scrolledtext, filedialog, messagebox
 import threading
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-import networkx as nx
 import os
-import time
-import json
-import math
 import queue
 
-# Import functions from concept_map.py
+# Try to import from concept_map
 try:
     from concept_map import (
         get_wikipedia_content,
         extract_all_concepts,
         extract_rich_relationships,
         generate_summary,
-        save_results
+        save_results,
+        create_visualization
     )
-except ImportError as e:
-    print(f"Error importing from concept_map.py: {e}")
-    # Define placeholder functions for testing
-    def get_wikipedia_content(concept):
-        return f"Placeholder text for {concept}"
-    
-    def extract_all_concepts(wiki_text):
-        return ["Concept1", "Concept2", "Concept3"]
-    
-    def extract_rich_relationships(concept, wiki_text, extracted_concepts):
-        return {}
-    
-    def generate_summary(concept, wiki_text, extracted_concepts, relationship_data):
-        return f"Summary for {concept}"
-    
-    def save_results(concept, wiki_text, extracted_concepts, relationship_data, output_dir):
-        return output_dir
+except ImportError:
+    # Try to import from concept_map_refactored
+    try:
+        from concept_map_refactored import (
+            get_wikipedia_content,
+            extract_all_concepts,
+            extract_rich_relationships,
+            generate_summary,
+            save_results,
+            create_visualization
+        )
+    except ImportError:
+        # Define placeholders
+        def get_wikipedia_content(concept):
+            print(f"GUI Stub: get_wikipedia_content for {concept}")
+            return "Placeholder content for Wikipedia"
+            
+        def extract_all_concepts(wiki_text):
+            print("GUI Stub: extract_all_concepts")
+            return ["Concept1", "Concept2", "Concept3"]
+            
+        def extract_rich_relationships(input_concept, wiki_text, extracted_concepts):
+            print("GUI Stub: extract_rich_relationships")
+            return {}
+            
+        def generate_summary(input_concept, wiki_text, extracted_concepts, relationship_data):
+            print("GUI Stub: generate_summary")
+            return f"Summary for {input_concept}"
+            
+        def save_results(input_concept, wiki_text, extracted_concepts, relationship_data, output_dir):
+            print("GUI Stub: save_results")
+            os.makedirs(output_dir, exist_ok=True)
+            return output_dir
+            
+        def create_visualization(concept, relationship_data, extracted_concepts, threshold=1.0):
+            print("GUI Stub: create_visualization")
+            import matplotlib.pyplot as plt
+            fig = plt.figure()
+            plt.text(0.5, 0.5, f"Concept Map for {concept}", 
+                   horizontalalignment='center', verticalalignment='center')
+            plt.axis('off')
+            return fig
+
 
 class ConceptMapApp:
+    """Main application class for the Philosophical Concept Map Generator GUI."""
+    
     def __init__(self, root):
+        """
+        Initialize the application.
+        
+        Args:
+            root: The tkinter root window
+        """
         self.root = root
         self.root.title("Philosophical Concept Map Generator")
         self.root.geometry("1200x800")
@@ -61,7 +95,7 @@ class ConceptMapApp:
         
         # Initialize variables
         self.concept_graph = None
-        self.current_threshold = 1
+        self.current_threshold = 1.0
         self.extracted_concepts = []
         self.relationship_data = {}
         self.wiki_text = ""
@@ -73,6 +107,7 @@ class ConceptMapApp:
         self.root.after(100, self.process_queue)
     
     def setup_input_section(self):
+        """Set up the input section of the GUI."""
         input_frame = ttk.LabelFrame(self.main_frame, text="Input", padding="10")
         input_frame.pack(side=tk.LEFT, fill=tk.BOTH, padx=5, pady=5, expand=False)
         
@@ -118,6 +153,7 @@ class ConceptMapApp:
         self.save_btn.config(state=tk.DISABLED)
     
     def setup_output_section(self):
+        """Set up the output section of the GUI."""
         self.output_frame = ttk.LabelFrame(self.main_frame, text="Concept Map Visualization", padding="10")
         self.output_frame.pack(side=tk.RIGHT, fill=tk.BOTH, padx=5, pady=5, expand=True)
         
@@ -130,6 +166,7 @@ class ConceptMapApp:
         self.placeholder_label.pack(expand=True)
     
     def update_threshold_label(self, *args):
+        """Update the threshold label when the slider changes."""
         self.threshold_label.config(text=f"{self.threshold_var.get():.1f}")
         
         # If we have data already, update the visualization
@@ -138,17 +175,28 @@ class ConceptMapApp:
             self.queue.put(("update_viz", None))
     
     def log(self, message):
+        """
+        Add a message to the log.
+        
+        Args:
+            message: The message to log
+        """
         # Use the queue to log from background threads
         self.queue.put(("log", message))
     
     def _log_message(self, message):
-        """Internal method to actually update the log from the main thread"""
+        """
+        Internal method to actually update the log from the main thread.
+        
+        Args:
+            message: The message to log
+        """
         self.log_text.insert(tk.END, message + "\n")
         self.log_text.see(tk.END)
         self.status_var.set(message)
     
     def process_queue(self):
-        """Process the event queue to handle threading"""
+        """Process the event queue to handle threading."""
         try:
             while True:
                 action, data = self.queue.get_nowait()
@@ -171,6 +219,7 @@ class ConceptMapApp:
             self.root.after(100, self.process_queue)
     
     def generate_concept_map(self):
+        """Generate a concept map for the entered concept."""
         concept = self.concept_entry.get().strip()
         if not concept:
             messagebox.showerror("Error", "Please enter a philosophical concept")
@@ -183,6 +232,12 @@ class ConceptMapApp:
         threading.Thread(target=self.process_concept_map, args=(concept,), daemon=True).start()
     
     def process_concept_map(self, concept):
+        """
+        Process the concept map generation in a background thread.
+        
+        Args:
+            concept: The concept to process
+        """
         try:
             # Get Wikipedia content
             self.log("Getting Wikipedia content...")
@@ -214,7 +269,12 @@ class ConceptMapApp:
             self.queue.put(("error", f"An error occurred: {str(e)}"))
     
     def create_visualization(self, concept):
-        """Create visualization in the main thread"""
+        """
+        Create visualization in the main thread.
+        
+        Args:
+            concept: The concept to visualize
+        """
         # Remove previous visualization
         for widget in self.canvas_frame.winfo_children():
             widget.destroy()
@@ -224,70 +284,25 @@ class ConceptMapApp:
         
         try:
             # Create a figure for the concept map
-            fig = plt.figure(figsize=(8, 6))
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
             
-            # Create graph
-            G = nx.Graph()
-            G.add_node(concept)
-            
-            # Calculate relevance scores for concepts
-            concept_relevance = {}
-            for pair_key, data in self.relationship_data.items():
-                pair_list = list(pair_key)
-                if pair_list[0] == concept:
-                    concept_relevance[pair_list[1]] = data["count"]
-                elif pair_list[1] == concept:
-                    concept_relevance[pair_list[0]] = data["count"]
-            
-            # Filter concepts by threshold and limit to top 15 for clarity
-            filtered_concepts = [(c, score) for c, score in concept_relevance.items() if score >= threshold]
-            top_concepts = sorted(filtered_concepts, key=lambda x: x[1], reverse=True)[:15]
-            
-            # Calculate positions in a circular layout
-            positions = {concept: (0.5, 0.5)}  # Center the main concept
-            
-            for i, (related_concept, score) in enumerate(top_concepts):
-                angle = 2 * math.pi * i / len(top_concepts) if top_concepts else 0
-                x = 0.5 + 0.4 * math.cos(angle)
-                y = 0.5 + 0.4 * math.sin(angle)
-                positions[related_concept] = (x, y)
-                G.add_node(related_concept)
-                G.add_edge(concept, related_concept, weight=score)
-            
-            # Draw the graph
-            nx.draw_networkx_nodes(G, positions, 
-                                  node_color="skyblue", 
-                                  node_size=3000, 
-                                  alpha=0.8)
-            
-            # Draw edges with width based on weight
-            if G.edges():
-                edge_weights = [G[u][v]['weight']/2 for u, v in G.edges()]
-                nx.draw_networkx_edges(G, positions, 
-                                     width=edge_weights, 
-                                     alpha=0.5, 
-                                     edge_color="gray")
-            
-            # Draw labels
-            nx.draw_networkx_labels(G, positions, font_size=10, font_weight='bold')
-            
-            plt.title(f"Concept Map for '{concept}'")
-            plt.axis('off')
+            # Create visualization
+            self.concept_graph = create_visualization(concept, self.relationship_data, 
+                                                    self.extracted_concepts, threshold)
             
             # Embed in tkinter
-            canvas = FigureCanvasTkAgg(fig, master=self.canvas_frame)
+            canvas = FigureCanvasTkAgg(self.concept_graph, master=self.canvas_frame)
             canvas.draw()
             canvas.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-            
-            # Store the graph for saving
-            self.concept_graph = fig
             
             self._log_message(f"Visualization created for '{concept}' with threshold {threshold:.1f}")
             
         except Exception as e:
             import traceback
+            error_text = traceback.format_exc()
             self._log_message(f"Error creating visualization: {str(e)}")
-            self._log_message(traceback.format_exc())
+            self._log_message(error_text)
     
     def save_results(self):
         """Save all results to a directory."""
@@ -314,12 +329,19 @@ class ConceptMapApp:
             
             self._log_message(f"All results saved successfully to {save_path}")
             messagebox.showinfo("Success", f"Results saved to {save_path}")
+            
         except Exception as e:
             self._log_message(f"Error saving results: {e}")
             messagebox.showerror("Error", f"Error saving results: {e}")
 
-# For testing
-if __name__ == "__main__":
+
+def start_gui():
+    """Start the GUI application."""
     root = tk.Tk()
     app = ConceptMapApp(root)
     root.mainloop()
+
+
+# For testing
+if __name__ == "__main__":
+    start_gui()

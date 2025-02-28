@@ -1,0 +1,13 @@
+{
+  "theme": "dark",
+  "cache_enabled": true,
+  "auto_save": true,
+  "default_threshold": 1.0,
+  "max_concepts": 15,
+  "show_help_on_startup": true,
+  "recent_concepts": [
+    "Justice",
+    "Ethics"
+  ],
+  "last_concept": "Justice"
+}

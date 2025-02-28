@@ -1,159 +1,286 @@
-import wikipedia
+"""
+Unit tests for the concept_map.py module.
+"""
+import unittest
 import os
-import spacy
+import sys
+import tempfile
+import shutil
+import json
+from unittest.mock import patch, MagicMock, mock_open
 
-# Load spaCy model
-try:
-    nlp = spacy.load("en_core_web_sm")
-    print("Successfully loaded spaCy model")
-except Exception as e:
-    print(f"Error loading spaCy model: {e}")
-    exit(1)
+# Add parent directory to path to import concept_map
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Philosophical terms to detect
-philosophical_terms = [
-    "Ethics", "Metaphysics", "Epistemology", "Logic", "Aesthetics", 
-    "Existentialism", "Empiricism", "Rationalism", "Phenomenology", 
-    "Determinism", "Free Will", "Consciousness", "Virtue Ethics", 
-    "Deontology", "Utilitarianism", "Moral Realism", "Relativism",
-    "Ontology", "Dualism", "Materialism", "Idealism", "Pragmatism",
-    "Positivism", "Skepticism", "Nihilism", "Subjectivism", "Objectivism"
-]
+# Import the module to test
+from test_framework import BaseConceptMapTest
 
-def get_wikipedia_content(concept_name, cache_dir="wiki_cache"):
-    """
-    Fetches Wikipedia content with caching to reduce API calls.
-    """
-    os.makedirs(cache_dir, exist_ok=True)
-    cache_file = os.path.join(cache_dir, f"{concept_name.replace(' ', '_')}.txt")
+
+class TestGetWikipediaContent(BaseConceptMapTest):
+    """Test the get_wikipedia_content function"""
     
-    # Check if we have a cached version
-    if os.path.exists(cache_file):
-        print(f"Loading cached content for '{concept_name}'")
+    @patch('wikipedia.page')
+    def test_successful_retrieval(self, mock_page):
+        """Test successfully retrieving content from Wikipedia"""
+        from concept_map import get_wikipedia_content
+        
+        # Set up mock
+        mock_page_obj = MagicMock()
+        mock_page_obj.content = "Test content"
+        mock_page_obj.title = "Test Title"
+        mock_page.return_value = mock_page_obj
+        
+        # Call function
+        result = get_wikipedia_content("Test", cache_dir=self.cache_dir)
+        
+        # Verify result
+        self.assertEqual(result, "Test content")
+        mock_page.assert_called_once_with("Test", auto_suggest=False)
+        
+        # Check that content was cached
+        cache_file = os.path.join(self.cache_dir, "Test.txt")
+        self.assertTrue(os.path.exists(cache_file))
         with open(cache_file, 'r', encoding='utf-8') as f:
-            return f.read()
+            self.assertEqual(f.read(), "Test content")
     
-    # Otherwise, fetch from Wikipedia
-    try:
-        print(f"Fetching Wikipedia content for '{concept_name}'")
-        # Use auto_suggest=False to prevent Wikipedia from changing our search term
-        page = wikipedia.page(concept_name, auto_suggest=False)
-        content = page.content
-        print(f"Successfully retrieved page: {page.title} ({len(content)} characters)")
+    def test_cache_retrieval(self):
+        """Test retrieving content from cache"""
+        from concept_map import get_wikipedia_content
         
-        # Cache the content
+        # Create cache file
+        cache_file = os.path.join(self.cache_dir, "Test.txt")
         with open(cache_file, 'w', encoding='utf-8') as f:
-            f.write(content)
+            f.write("Cached content")
         
-        return content
-    except wikipedia.exceptions.PageError as e:
-        print(f"Wikipedia PageError for '{concept_name}': {e}")
-        return None
-    except wikipedia.exceptions.DisambiguationError as e:
-        print(f"\nDisambiguation error for '{concept_name}'. Options include: {', '.join(e.options[:5])}")
-        return None
-    except Exception as e:
-        print(f"Unexpected error when fetching '{concept_name}': {str(e)}")
-        return None
+        # Call function with Wikipedia mock to ensure it's not called
+        with patch('wikipedia.page') as mock_page:
+            result = get_wikipedia_content("Test", cache_dir=self.cache_dir)
+            
+            # Verify result comes from cache
+            self.assertEqual(result, "Cached content")
+            mock_page.assert_not_called()
+    
+    @patch('wikipedia.page')
+    def test_wikipedia_page_error(self, mock_page):
+        """Test handling WikipediaError"""
+        from concept_map import get_wikipedia_content
+        import wikipedia
+        
+        # Set up mock to raise exception
+        mock_page.side_effect = wikipedia.exceptions.PageError("Test")
+        
+        # Call function
+        result = get_wikipedia_content("Test", cache_dir=self.cache_dir)
+        
+        # Verify result
+        self.assertIsNone(result)
+    
+    @patch('wikipedia.page')
+    def test_wikipedia_disambiguation_error(self, mock_page):
+        """Test handling DisambiguationError"""
+        from concept_map import get_wikipedia_content
+        import wikipedia
+        
+        # Set up mock to raise exception
+        mock_page.side_effect = wikipedia.exceptions.DisambiguationError("Test", ["Option1", "Option2"])
+        
+        # Call function
+        result = get_wikipedia_content("Test", cache_dir=self.cache_dir)
+        
+        # Verify result
+        self.assertIsNone(result)
 
-def extract_all_concepts(wiki_text):
-    """
-    Extracts concepts using both NER and a predefined list of philosophical terms.
-    """
-    if not wiki_text:
-        return []
-    
-    print("Extracting concepts from text...")
-    
-    # NER extraction
-    doc = nlp(wiki_text[:10000])  # Limit text for faster processing
-    ner_concepts = set()
-    relevant_entity_types = ["ORG", "PERSON", "NORP", "MISC", "GPE"]
-    for ent in doc.ents:
-        if ent.label_ in relevant_entity_types:
-            ner_concepts.add(ent.text)
-    
-    # Keyword-based extraction
-    keyword_concepts = set()
-    for term in philosophical_terms:
-        if term.lower() in wiki_text.lower():
-            keyword_concepts.add(term)
-    
-    # Combine both approaches
-    all_concepts = ner_concepts.union(keyword_concepts)
-    return list(all_concepts)
 
-def extract_rich_relationships(input_concept, wiki_text, extracted_concepts):
-    """
-    Extracts relationships with richer semantic content.
-    """
-    if not wiki_text:
-        return {}
+class TestExtractAllConcepts(BaseConceptMapTest):
+    """Test the extract_all_concepts function"""
     
-    print(f"Analyzing relationships for '{input_concept}'...")
+    def test_empty_text(self):
+        """Test extracting concepts from empty text"""
+        from concept_map import extract_all_concepts
+        
+        result = extract_all_concepts("")
+        self.assertEqual(result, [])
     
-    doc = nlp(wiki_text[:20000])  # Limit text for faster processing
-    sentences = list(doc.sents)
-    relationship_data = {}
-    
-    input_concept_lower = input_concept.lower()
-    
-    for sentence in sentences:
-        sentence_text = sentence.text.lower()
-        if input_concept_lower in sentence_text:
-            # Find concepts that co-occur in this sentence
-            for concept in extracted_concepts:
-                concept_lower = concept.lower()
-                if concept_lower != input_concept_lower and concept_lower in sentence_text:
-                    # Create a unique key for this concept pair
-                    pair_key = frozenset({input_concept, concept})
-                    
-                    # Initialize data structure if this is the first occurrence
-                    if pair_key not in relationship_data:
-                        relationship_data[pair_key] = {
-                            "count": 0,
-                            "sentences": []
-                        }
-                    
-                    # Update relationship data
-                    relationship_data[pair_key]["count"] += 1
-                    relationship_data[pair_key]["sentences"].append(sentence.text)
-    
-    return relationship_data
+    @patch('concept_map.nlp')
+    def test_extract_concepts(self, mock_nlp):
+        """Test extracting concepts from text"""
+        from concept_map import extract_all_concepts
+        
+        # Create mock document and entities
+        mock_doc = MagicMock()
+        
+        mock_entity1 = MagicMock()
+        mock_entity1.text = "Kant"
+        mock_entity1.label_ = "PERSON"
+        
+        mock_entity2 = MagicMock()
+        mock_entity2.text = "Utilitarianism"
+        mock_entity2.label_ = "MISC"
+        
+        mock_doc.ents = [mock_entity1, mock_entity2]
+        mock_nlp.return_value = mock_doc
+        
+        # Set up philosophical terms
+        with patch('concept_map.philosophical_terms', ["Ethics", "Utilitarianism"]):
+            result = extract_all_concepts("Test text about Ethics and Kant")
+            
+            # Should find both NER entities and terms
+            self.assertIn("Kant", result)
+            self.assertIn("Utilitarianism", result)
+            self.assertIn("Ethics", result)
 
-def main():
-    # Test the full pipeline with a simple concept
-    concept = "Ethics"
-    print(f"Testing concept map generation for '{concept}'")
+
+class TestExtractRichRelationships(BaseConceptMapTest):
+    """Test the extract_rich_relationships function"""
     
-    # Get Wikipedia content
-    wiki_text = get_wikipedia_content(concept)
-    if not wiki_text:
-        print(f"Failed to retrieve Wikipedia content for '{concept}'")
-        return
+    def test_empty_text(self):
+        """Test with empty text"""
+        from concept_map import extract_rich_relationships
+        
+        result = extract_rich_relationships("Ethics", "", ["Utilitarianism"])
+        self.assertEqual(result, {})
     
-    # Extract concepts
-    extracted_concepts = extract_all_concepts(wiki_text)
-    print(f"Found {len(extracted_concepts)} related concepts")
-    print("Top concepts:", extracted_concepts[:10])
+    @patch('concept_map.nlp')
+    def test_extract_relationships(self, mock_nlp):
+        """Test extracting relationships between concepts"""
+        from concept_map import extract_rich_relationships
+        
+        # Create mock sentences
+        mock_sent1 = MagicMock()
+        mock_sent1.text = "Ethics is related to morality."
+        
+        mock_sent2 = MagicMock()
+        mock_sent2.text = "Utilitarianism is an ethical theory."
+        
+        mock_doc = MagicMock()
+        mock_doc.sents = [mock_sent1, mock_sent2]
+        mock_nlp.return_value = mock_doc
+        
+        # Test extraction
+        result = extract_rich_relationships(
+            "Ethics", 
+            "Test text", 
+            ["Ethics", "Utilitarianism", "Morality"]
+        )
+        
+        # Check relationships
+        self.assertIn(frozenset({"Ethics", "Morality"}), result)
+        self.assertIn(frozenset({"Ethics", "Utilitarianism"}), result)
+        
+        # Check counts and sentences
+        self.assertEqual(result[frozenset({"Ethics", "Morality"})]["count"], 1)
+        self.assertEqual(
+            result[frozenset({"Ethics", "Morality"})]["sentences"][0],
+            "Ethics is related to morality."
+        )
+
+
+class TestGenerateSummary(BaseConceptMapTest):
+    """Test the generate_summary function"""
     
-    # Extract relationships
-    relationship_data = extract_rich_relationships(concept, wiki_text, extracted_concepts)
-    print(f"Found {len(relationship_data)} relationships")
+    def test_insufficient_data(self):
+        """Test with insufficient data"""
+        from concept_map import generate_summary
+        
+        result = generate_summary("Ethics", "", [], {})
+        self.assertIn("Insufficient data", result)
     
-    # Print some relationships
-    print("\nTop relationships:")
-    for i, (pair_key, data) in enumerate(sorted(relationship_data.items(), key=lambda x: x[1]["count"], reverse=True)):
-        if i >= 5:  # Only show top 5
-            break
-        pair_list = list(pair_key)
-        other_concept = pair_list[0] if pair_list[1] == concept else pair_list[1]
-        print(f"- {concept} and {other_concept}: mentioned together {data['count']} times")
-        if data["sentences"]:
-            sample_sentence = data["sentences"][0]
-            if len(sample_sentence) > 100:
-                sample_sentence = sample_sentence[:97] + "..."
-            print(f"  Example: \"{sample_sentence}\"")
+    def test_generate_summary(self):
+        """Test generating a summary"""
+        from concept_map import generate_summary
+        
+        # Test with sample data
+        result = generate_summary(
+            "Ethics",
+            self.sample_wiki_text,
+            self.sample_concepts,
+            self.sample_relationships
+        )
+        
+        # Check the summary content
+        self.assertIn("Ethics", result)
+        self.assertIn("Concept Map Summary", result)
+        self.assertIn("Most Closely Related Concepts", result)
+        
+        # Should mention all related concepts
+        for concept in ["Normative Ethics", "Applied Ethics", "Metaethics"]:
+            self.assertIn(concept, result)
+
+
+class TestSaveResults(BaseConceptMapTest):
+    """Test the save_results function"""
+    
+    def test_save_results(self):
+        """Test saving results to files"""
+        from concept_map import save_results
+        
+        # Call the function
+        result_dir = save_results(
+            "Ethics",
+            self.sample_wiki_text,
+            self.sample_concepts,
+            self.sample_relationships,
+            self.output_dir
+        )
+        
+        # Verify output directory
+        expected_dir = os.path.join(self.output_dir, "Ethics")
+        self.assertEqual(result_dir, expected_dir)
+        self.assertTrue(os.path.exists(expected_dir))
+        
+        # Verify files
+        self.assertTrue(os.path.exists(os.path.join(expected_dir, "wiki_text.txt")))
+        self.assertTrue(os.path.exists(os.path.join(expected_dir, "extracted_concepts.json")))
+        self.assertTrue(os.path.exists(os.path.join(expected_dir, "relationships.json")))
+        
+        # Verify content
+        with open(os.path.join(expected_dir, "wiki_text.txt"), 'r', encoding='utf-8') as f:
+            self.assertEqual(f.read(), self.sample_wiki_text)
+        
+        with open(os.path.join(expected_dir, "extracted_concepts.json"), 'r', encoding='utf-8') as f:
+            concepts = json.load(f)
+            self.assertEqual(concepts, self.sample_concepts)
+
+
+class TestCreateVisualization(BaseConceptMapTest):
+    """Test the create_visualization function"""
+    
+    @patch('matplotlib.pyplot.figure')
+    @patch('matplotlib.pyplot.savefig')
+    @patch('matplotlib.pyplot.show')
+    @patch('networkx.spring_layout')
+    @patch('networkx.draw_networkx_nodes')
+    @patch('networkx.draw_networkx_edges')
+    @patch('networkx.draw_networkx_labels')
+    def test_create_visualization(self, mock_labels, mock_edges, mock_nodes, 
+                                mock_layout, mock_show, mock_savefig, mock_figure):
+        """Test creating a visualization"""
+        from concept_map import create_visualization
+        
+        # Mock networkx layout
+        mock_layout.return_value = {
+            "Ethics": (0.5, 0.5),
+            "Normative Ethics": (0.2, 0.3),
+            "Applied Ethics": (0.7, 0.3)
+        }
+        
+        # Call the function
+        create_visualization(
+            "Ethics",
+            self.sample_relationships,
+            self.sample_concepts,
+            threshold=1.0
+        )
+        
+        # Verify the calls
+        mock_figure.assert_called_once()
+        mock_layout.assert_called_once()
+        mock_nodes.assert_called_once()
+        mock_savefig.assert_called_once()
+        
+        # Verify show was called
+        mock_show.assert_called_once()
+
 
 if __name__ == "__main__":
-    main()
+    unittest.main()
