@@ -2,12 +2,20 @@
   "theme": "dark",
   "cache_enabled": true,
   "auto_save": true,
-  "default_threshold": 1.0,
+  "default_threshold": 0.0,
   "max_concepts": 15,
   "show_help_on_startup": true,
   "recent_concepts": [
-    "Justice",
-    "Ethics"
+    "Metaphysics",
+    "Ethics",
+    "Ontology",
+    "Reality",
+    "Consciousness",
+    "Balls",
+    "Kant",
+    "Death of God",
+    "Linguistics",
+    "Nihilism"
   ],
-  "last_concept": "Justice"
+  "last_concept": "Metaphysics"
 }

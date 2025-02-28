@@ -1,0 +1,2 @@
+2025-02-28 20:10:49,149 - gui - WARNING - Error importing from concept_map_refactored.py: No module named 'concept_map_refactored'
+2025-02-28 20:10:49,160 - gui - CRITICAL - Failed to import any concept_map module: No module named 'concept_map'

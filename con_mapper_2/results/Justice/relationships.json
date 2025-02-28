@@ -1,0 +1,92 @@
+{
+  "['Ethics', 'Justice']": {
+    "count": 9,
+    "sentences": [
+      "Justice is related to Ethics."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Fairness', 'Justice']": {
+    "count": 9,
+    "sentences": [
+      "Justice is related to Fairness."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Equality', 'Justice']": {
+    "count": 8,
+    "sentences": [
+      "Justice is related to Equality."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Justice', 'Morality']": {
+    "count": 8,
+    "sentences": [
+      "Justice is related to Morality."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Justice', 'Social Philosophy']": {
+    "count": 7,
+    "sentences": [
+      "Justice is related to Social Philosophy."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Justice', 'Plato']": {
+    "count": 7,
+    "sentences": [
+      "Justice is related to Plato."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Aristotle', 'Justice']": {
+    "count": 6,
+    "sentences": [
+      "Justice is related to Aristotle."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['John Rawls', 'Justice']": {
+    "count": 6,
+    "sentences": [
+      "Justice is related to John Rawls."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Justice', 'Law']": {
+    "count": 5,
+    "sentences": [
+      "Justice is related to Law."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  },
+  "['Justice', 'Rights']": {
+    "count": 5,
+    "sentences": [
+      "Justice is related to Rights."
+    ],
+    "relationship_type": "related_to",
+    "is_directed": false,
+    "direction": null
+  }
+}

@@ -1,0 +1,46 @@
+[
+  {
+    "concept": "Justice",
+    "relevance_score": 1.0
+  },
+  {
+    "concept": "Ethics",
+    "relevance_score": 0.95
+  },
+  {
+    "concept": "Fairness",
+    "relevance_score": 0.9
+  },
+  {
+    "concept": "Equality",
+    "relevance_score": 0.85
+  },
+  {
+    "concept": "Morality",
+    "relevance_score": 0.8
+  },
+  {
+    "concept": "Social Philosophy",
+    "relevance_score": 0.75
+  },
+  {
+    "concept": "Plato",
+    "relevance_score": 0.7
+  },
+  {
+    "concept": "Aristotle",
+    "relevance_score": 0.65
+  },
+  {
+    "concept": "John Rawls",
+    "relevance_score": 0.6
+  },
+  {
+    "concept": "Law",
+    "relevance_score": 0.55
+  },
+  {
+    "concept": "Rights",
+    "relevance_score": 0.5
+  }
+]
